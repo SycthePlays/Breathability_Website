@@ -80,6 +80,50 @@ each. Selecting a route highlights it on the map and fills the chatbot
 panel with a short explanation of why it's recommended over the other two.
 Fully stateless — nothing here persists between visits.
 
+## Mobile support
+
+This is treated as the top priority, not an afterthought — most people
+checking air quality before a commute will do it from a phone, not a
+laptop. Specific measures already in the scaffold:
+
+- **Mobile-first CSS.** The dashboard's default (no media query) layout
+  stacks the map and route panel vertically, with the map taking the
+  remaining flexible space and the panel capped at 40vh and independently
+  scrollable — like a lightweight bottom sheet. At `min-width: 768px` it
+  switches to the original side-by-side desktop layout. Built mobile-first
+  on purpose: the constrained layout is designed for first, then
+  progressively enhanced for more space, not the other way around.
+- **`100dvh`, not just `100vh`.** Mobile browser chrome (the address bar
+  showing/hiding on scroll in iOS Safari and Android Chrome) makes `100vh`
+  unreliable and can clip content at the bottom. `dashboard.module.css`
+  sets `height: 100vh` then overrides with `height: 100dvh`, so older
+  browsers that don't understand `dvh` silently keep the `100vh` fallback.
+- **Explicit viewport meta config**, set via Next's `viewport` export in
+  `app/layout.js` (`width: device-width, initialScale: 1`). Pinch-zoom is
+  deliberately left enabled — capping `maximumScale` is a common mobile
+  mistake that breaks accessibility for anyone who needs to zoom in.
+- **Touch target sizing.** The landing page CTA is padded to stay
+  comfortably above the ~44px minimum recommended tap target size.
+- **Fluid type** on the landing page heading via `clamp()`, so it scales
+  smoothly from small phones to desktop instead of jumping at a
+  breakpoint.
+- **Leaflet's touch handling is used as-is** — pan/pinch-zoom work on
+  mobile by default with no extra config; nothing in this scaffold
+  overrides it.
+
+What's *not* yet handled and worth testing once the real UI goes in:
+mobile-specific input for the start/destination pickers (an address
+search bar is much easier to use one-handed than pin-dropping on a small
+screen), and geolocation ("use my current location") as a faster mobile
+starting point than manual search. Neither is implemented yet — flagging
+them now so they don't get missed later.
+
+**Before the demo:** test at a few real widths, not just resizing a
+desktop browser — 360px (small Android), 390px (iPhone), and 768px
+(tablet/breakpoint boundary) cover most of what a judge might actually
+use. Chrome DevTools' device toolbar is a fine stand-in if a physical
+phone isn't handy.
+
 ## Core features
 
 **Opening page**
@@ -140,6 +184,7 @@ Fully stateless — nothing here persists between visits.
 app/
   page.js              — opening page
   dashboard/page.js     — main map + route panel
+  dashboard/dashboard.module.css — mobile-first responsive layout
   api/aqi/route.js      — GET  composite AQI for a point
   api/routes/route.js   — POST ranked routes for start/destination
   api/explain/route.js  — POST Groq explanation for a chosen route

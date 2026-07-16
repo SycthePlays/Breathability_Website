@@ -5,7 +5,9 @@
 export default function Home() {
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '4rem 1.5rem' }}>
-      <h1 style={{ fontSize: '2.25rem', marginBottom: '0.5rem' }}>Breathability</h1>
+      <h1 style={{ fontSize: 'clamp(1.75rem, 6vw, 2.25rem)', marginBottom: '0.5rem' }}>
+        Breathability
+      </h1>
       <p style={{ fontSize: '1.1rem', color: '#333' }}>
         Find the route with the freshest air, not just the shortest one.
       </p>
@@ -23,7 +25,7 @@ export default function Home() {
         style={{
           display: 'inline-block',
           marginTop: '1.5rem',
-          padding: '0.75rem 1.5rem',
+          padding: '0.9rem 1.75rem', // keeps the tap target comfortably above the ~44px mobile minimum
           background: '#111',
           color: '#fff',
           borderRadius: 8,

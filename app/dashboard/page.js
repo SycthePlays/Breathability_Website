@@ -1,29 +1,26 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import styles from './dashboard.module.css';
 
 // Loaded client-side only — Leaflet needs the browser window.
 const MapView = dynamic(() => import('../../components/MapView'), {
   ssr: false,
 });
 
+// Mobile-first layout: map + panel stack vertically below 768px (panel
+// becomes a capped, scrollable strip so the map keeps most of the
+// screen), side-by-side above it. See dashboard.module.css.
 export default function Dashboard() {
   return (
-    <main style={{ display: 'flex', height: '100vh' }}>
-      <div style={{ flex: 1 }}>
+    <main className={styles.dashboard}>
+      <div className={styles.mapPane}>
         <MapView />
       </div>
 
-      <aside
-        style={{
-          width: 320,
-          padding: '1.5rem',
-          borderLeft: '1px solid #eee',
-          overflowY: 'auto',
-        }}
-      >
-        <h2 style={{ fontSize: '1.1rem' }}>Route options</h2>
-        <p style={{ color: '#666', fontSize: '0.9rem' }}>
+      <aside className={styles.sidePanel}>
+        <h2>Route options</h2>
+        <p>
           Set a start and destination on the map to see up to 3 ranked
           routes here, each with distance, time, and AQI exposure.
         </p>

@@ -2,6 +2,12 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Prevents iOS Safari from auto-bumping font sizes on rotation, which
+     otherwise fights with the clamp()-based fluid type on the landing page. */
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
@@ -9,6 +15,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #111;
   background: #fff;
+  overflow-x: hidden; /* guards against accidental horizontal scroll on small screens */
 }
 
 a {
