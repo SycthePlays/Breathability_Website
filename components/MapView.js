@@ -11,6 +11,7 @@ import {
   Polyline,
   Circle,
   Tooltip,
+  Popup,
   useMapEvents,
   useMap,
 } from 'react-leaflet';
@@ -84,6 +85,31 @@ function UserLocationDot() {
   );
 }
 
+// Hands the live Leaflet instance up to the parent — the drag-and-drop
+// rating chip needs it to convert a screen drop point into lat/lon.
+function MapRefBinder({ onMapReady }) {
+  const map = useMap();
+  useEffect(() => {
+    onMapReady?.(map);
+  }, [map, onMapReady]);
+  return null;
+}
+
+// Gold star pill for a community walk rating.
+function ratingIcon(rating) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      display:flex;align-items:center;gap:2px;
+      background:#f9a825;color:#fff;font-weight:700;font-size:12px;
+      padding:2px 8px;border-radius:9999px;border:2px solid #fff;
+      box-shadow:0 2px 6px rgba(38,50,56,0.35);white-space:nowrap;
+    ">★ ${rating}</div>`,
+    iconSize: [44, 22],
+    iconAnchor: [22, 11],
+  });
+}
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -115,11 +141,14 @@ export default function MapView({
   destination,
   routes = [],
   overlay = [],
+  ratings = [],
+  ratingDraft = null,
   selectedIndex = 0,
   onSelectRoute,
   onMapClick,
   onMoveStart,
   onMoveDestination,
+  onMapReady,
 }) {
   return (
     <MapContainer center={JAKARTA_CENTER} zoom={12} style={{ height: '100%', width: '100%' }}>
@@ -131,6 +160,41 @@ export default function MapView({
       <ClickHandler onMapClick={onMapClick} />
       <FitRoutes routes={routes} />
       <UserLocationDot />
+      <MapRefBinder onMapReady={onMapReady} />
+
+      {/* Community walk ratings — gold star pills with comment popups */}
+      {ratings.map((r) => (
+        <Marker key={r.id} position={[r.lat, r.lon]} icon={ratingIcon(r.rating)}>
+          <Popup>
+            <div style={{ maxWidth: 220, fontFamily: 'inherit' }}>
+              <div style={{ color: '#f9a825', fontSize: 16, letterSpacing: 2 }}>
+                {'★'.repeat(r.rating)}
+                <span style={{ color: '#bdc9c6' }}>{'★'.repeat(5 - r.rating)}</span>
+              </div>
+              {r.comment && (
+                <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45 }}>{r.comment}</div>
+              )}
+              <div style={{ marginTop: 4, fontSize: 11, opacity: 0.6 }}>
+                {new Date(r.created_at).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+
+      {/* Pending pin while the rating form is open */}
+      {ratingDraft && (
+        <Marker
+          position={[ratingDraft.lat, ratingDraft.lon]}
+          icon={ratingIcon('?')}
+          interactive={false}
+          opacity={0.75}
+        />
+      )}
 
       {/* AQI overlay — one translucent circle per kecamatan, colored by the
           composite score (live AQI + vegetation + traffic + population) */}

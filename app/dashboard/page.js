@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import styles from './dashboard.module.css';
 import TopNav from '../../components/TopNav';
 import RoutePanel from '../../components/RoutePanel';
+import { RateWalkChip, RatingForm } from '../../components/RateWalk';
 import { SCORE_LEVELS } from '../../lib/aqiCategories';
 import { REFERENCE_AREAS, isInServiceArea } from '../../lib/jakartaAreas';
 
@@ -59,6 +60,48 @@ export default function Dashboard() {
   // arrive and collapses while the user is placing a pin on the map.
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const explainSeq = useRef(0); // guards against out-of-order explain responses
+
+  // Community walk ratings (drag-and-drop star pins).
+  const [ratings, setRatings] = useState([]);
+  const [ratingDraft, setRatingDraft] = useState(null); // {lat, lon} while form open
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const mapRef = useRef(null); // live Leaflet instance
+  const mapPaneRef = useRef(null); // the map's wrapper div (drop target)
+
+  // Load existing pins once. This is our own Supabase (unlimited API
+  // requests on the free tier) — the Open-Meteo quota rule doesn't apply.
+  useEffect(() => {
+    fetch('/api/ratings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.ratings) setRatings(data.ratings);
+      })
+      .catch(() => {}); // pins are decoration — never block the dashboard
+  }, []);
+
+  const submitRating = useCallback(
+    async ({ rating, comment }) => {
+      if (!ratingDraft) return;
+      setRatingSubmitting(true);
+      try {
+        const res = await fetch('/api/ratings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: ratingDraft.lat, lon: ratingDraft.lon, rating, comment }),
+        });
+        const data = await res.json();
+        if (res.ok && data.rating) {
+          setRatings((cur) => [data.rating, ...cur]);
+          setRatingDraft(null);
+        }
+      } catch {
+        // leave the form open so the user can retry
+      } finally {
+        setRatingSubmitting(false);
+      }
+    },
+    [ratingDraft]
+  );
 
   // Restore the last session once on mount — no API calls involved.
   useEffect(() => {
@@ -239,17 +282,36 @@ export default function Dashboard() {
     <>
       <TopNav active="map" />
       <main className={styles.dashboard}>
-        <div className={styles.mapPane}>
+        <div className={styles.mapPane} ref={mapPaneRef}>
           <MapView
             start={start}
             destination={destination}
             routes={routes}
             overlay={overlay}
+            ratings={ratings}
+            ratingDraft={ratingDraft}
             selectedIndex={selectedIndex}
             onSelectRoute={handleSelectRoute}
             onMapClick={handleMapClick}
             onMoveStart={(coords) => setPoint('start', coords)}
             onMoveDestination={(coords) => setPoint('dest', coords)}
+            onMapReady={(map) => {
+              mapRef.current = map;
+            }}
+          />
+
+          {/* Drag the star onto the map to rate a walk there */}
+          <RateWalkChip
+            mapPaneRef={mapPaneRef}
+            getMap={() => mapRef.current}
+            onDrop={(point) => setRatingDraft(point)}
+          />
+          <RatingForm
+            key={ratingDraft ? `${ratingDraft.lat},${ratingDraft.lon}` : 'closed'}
+            draft={ratingDraft}
+            submitting={ratingSubmitting}
+            onCancel={() => setRatingDraft(null)}
+            onSubmit={submitRating}
           />
 
           {/* AQI legend — floats over the map, bottom right */}
