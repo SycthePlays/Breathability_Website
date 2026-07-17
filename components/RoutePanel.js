@@ -3,6 +3,75 @@
 import LocationSearchInput from './LocationSearchInput';
 import { categorizeScore, ROUTE_COLORS } from '../lib/aqiCategories';
 
+// Departure options for time-based AQI predictions (hours from now).
+const DEPART_CHOICES = [
+  { hours: 0, label: 'Now' },
+  { hours: 1, label: '+1h' },
+  { hours: 2, label: '+2h' },
+  { hours: 3, label: '+3h' },
+  { hours: 6, label: '+6h' },
+  { hours: 12, label: '+12h' },
+];
+
+function hourLabel(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// 24-hour composite forecast as a compact bar strip: taller/redder bars =
+// worse air, using the same Good/Moderate/Poor colors as the map legend.
+function ForecastStrip({ forecast }) {
+  if (!forecast?.hours?.length) return null;
+  const max = Math.max(...forecast.hours.map((h) => h.compositeScore), 1);
+
+  return (
+    <div className="bg-surface-container-lowest rounded-xl p-card-padding breathable-shadow border border-outline-variant/10">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-label-md text-label-md text-on-surface m-0 flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-primary text-[18px]">schedule</span>
+          Next 24h air forecast
+        </h3>
+        {forecast.nearestArea && (
+          <span className="text-label-sm font-label-sm text-on-surface-variant">
+            {forecast.nearestArea}
+          </span>
+        )}
+      </div>
+
+      {forecast.best && (
+        <p className="text-label-sm font-label-sm text-primary mt-0 mb-3">
+          Cleanest window: around {hourLabel(forecast.best.time)} (score{' '}
+          {forecast.best.compositeScore}/100)
+        </p>
+      )}
+
+      <div className="flex items-end gap-[2px] h-12">
+        {forecast.hours.map((h) => {
+          const cat = categorizeScore(h.compositeScore);
+          const isBest = forecast.best && h.time === forecast.best.time;
+          return (
+            <div
+              key={h.time}
+              title={`${hourLabel(h.time)} — score ${h.compositeScore}/100 (${cat.label})`}
+              className="flex-1 rounded-t-sm min-w-0"
+              style={{
+                height: `${Math.max((h.compositeScore / max) * 100, 12)}%`,
+                background: cat.color,
+                outline: isBest ? '2px solid rgb(var(--c-primary))' : 'none',
+                outlineOffset: 1,
+              }}
+            />
+          );
+        })}
+      </div>
+      <div className="flex justify-between text-label-sm font-label-sm text-on-surface-variant mt-1">
+        <span>{hourLabel(forecast.hours[0].time)}</span>
+        <span>{hourLabel(forecast.hours[Math.floor(forecast.hours.length / 2)].time)}</span>
+        <span>{hourLabel(forecast.hours[forecast.hours.length - 1].time)}</span>
+      </div>
+    </div>
+  );
+}
+
 function formatDistance(meters) {
   if (meters == null) return '—';
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
@@ -27,6 +96,9 @@ export default function RoutePanel({
   onFindRoutes,
   loading,
   error,
+  departOffset = 0,
+  onChangeDepartOffset,
+  forecast,
   routes,
   selectedIndex,
   onSelectRoute,
@@ -95,6 +167,30 @@ export default function RoutePanel({
           </p>
         )}
 
+        {/* When are you leaving? Future picks score routes with the CAMS
+            hourly forecast for that time instead of the current reading. */}
+        <div className="mt-4">
+          <div className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-1.5">
+            Leave
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {DEPART_CHOICES.map((c) => (
+              <button
+                key={c.hours}
+                type="button"
+                onClick={() => onChangeDepartOffset?.(c.hours)}
+                className={`px-3 py-1.5 rounded-full text-label-sm font-label-sm whitespace-nowrap border transition-colors ${
+                  departOffset === c.hours
+                    ? 'bg-primary text-on-primary border-primary'
+                    : 'bg-surface-container-low text-on-surface-variant border-outline-variant/40 hover:border-primary/50'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={onFindRoutes}
@@ -119,6 +215,9 @@ export default function RoutePanel({
         <div className="space-y-3">
           <h3 className="font-label-md text-label-md text-on-surface-variant px-1 uppercase tracking-wider m-0">
             Recommended Routes
+            {departOffset > 0 && (
+              <span className="normal-case tracking-normal text-primary"> · forecast +{departOffset}h</span>
+            )}
           </h3>
 
           {routes.map((route, i) => {
@@ -191,6 +290,9 @@ export default function RoutePanel({
               </button>
             );
           })}
+
+          {/* Time-based AQI prediction for the start area */}
+          <ForecastStrip forecast={forecast} />
 
           {/* AI explanation panel */}
           <div className="bg-inverse-surface text-inverse-on-surface rounded-xl p-card-padding relative overflow-hidden">

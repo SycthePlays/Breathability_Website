@@ -103,6 +103,34 @@ function timeAgo(iso) {
   return `${Math.round(mins / 60)}h ago`;
 }
 
+const HOSPITAL_ICON = L.divIcon({
+  className: '',
+  html: `<div style="
+    width:26px;height:26px;border-radius:6px;background:#ba1a1a;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:16px;font-family:sans-serif;
+    border:2px solid #fff;box-shadow:0 2px 8px rgba(186,26,26,0.5);
+  ">H</div>`,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
+// Zooms to the emergency route (or straight to the hospital) the moment
+// emergency mode activates.
+function FitEmergency({ emergency }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!emergency) return;
+    const coords = (emergency.route?.geometry?.coordinates || []).map(([lon, lat]) => [lat, lon]);
+    if (coords.length) {
+      map.fitBounds(L.latLngBounds(coords), { padding: [50, 50] });
+    } else if (emergency.hospital) {
+      map.setView([emergency.hospital.lat, emergency.hospital.lon], 14);
+    }
+  }, [emergency, map]);
+  return null;
+}
+
 // Gold star pill for a community walk rating.
 function ratingIcon(rating) {
   return L.divIcon({
@@ -151,6 +179,7 @@ export default function MapView({
   overlay = [],
   ratings = [],
   ratingDraft = null,
+  emergency = null,
   selectedIndex = 0,
   onSelectRoute,
   onMapClick,
@@ -234,8 +263,30 @@ export default function MapView({
         );
       })}
 
-      {/* Ranked route polylines — unselected routes fade back */}
-      {routes.map((route, i) => {
+      <FitEmergency emergency={emergency} />
+
+      {/* Emergency: fastest route to the nearest ER, on top of everything */}
+      {emergency?.route?.geometry && (
+        <Polyline
+          positions={emergency.route.geometry.coordinates.map(([lon, lat]) => [lat, lon])}
+          pathOptions={{ color: '#ba1a1a', weight: 7, opacity: 0.95 }}
+        />
+      )}
+      {emergency?.hospital && (
+        <Marker
+          position={[emergency.hospital.lat, emergency.hospital.lon]}
+          icon={HOSPITAL_ICON}
+          zIndexOffset={1000}
+        >
+          <Tooltip permanent direction="top" offset={[0, -14]}>
+            {emergency.hospital.name}
+          </Tooltip>
+        </Marker>
+      )}
+
+      {/* Ranked route polylines — hidden during an emergency so the red
+          route is unambiguous; unselected routes fade back otherwise */}
+      {!emergency && routes.map((route, i) => {
         const coords = (route.geometry?.coordinates || []).map(([lon, lat]) => [lat, lon]);
         const isSelected = i === selectedIndex;
         return (

@@ -6,6 +6,7 @@ import styles from './dashboard.module.css';
 import TopNav from '../../components/TopNav';
 import RoutePanel from '../../components/RoutePanel';
 import { RateWalkChip, RatingForm } from '../../components/RateWalk';
+import { EmergencyButton, EmergencyPanel } from '../../components/Emergency';
 import { SCORE_LEVELS } from '../../lib/aqiCategories';
 import { REFERENCE_AREAS, isInServiceArea } from '../../lib/jakartaAreas';
 
@@ -50,6 +51,8 @@ export default function Dashboard() {
   const [pinMode, setPinMode] = useState(null); // 'start' | 'dest' | null
   const [routes, setRoutes] = useState([]);
   const [overlay, setOverlay] = useState([]);
+  const [departOffset, setDepartOffset] = useState(0); // hours from now; 0 = leave now
+  const [forecast, setForecast] = useState(null); // 24h curve for the start area
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -60,6 +63,57 @@ export default function Dashboard() {
   // arrive and collapses while the user is placing a pin on the map.
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const explainSeq = useRef(0); // guards against out-of-order explain responses
+
+  // Emergency mode: reroute to nearest ER + auto-open the dialer.
+  const [emergency, setEmergency] = useState(null);
+  const [emergencyBusy, setEmergencyBusy] = useState(false);
+
+  const activateEmergency = useCallback(async () => {
+    setEmergencyBusy(true);
+
+    // Best-available position: live GPS, else the start pin, else map
+    // center. Never block the emergency on a permission prompt for long.
+    const getPosition = () =>
+      new Promise((resolve) => {
+        const fallback = () =>
+          resolve(
+            start
+              ? { lat: start.lat, lon: start.lon }
+              : mapRef.current
+                ? { lat: mapRef.current.getCenter().lat, lon: mapRef.current.getCenter().lng }
+                : { lat: -6.2088, lon: 106.8456 }
+          );
+        if (!navigator.geolocation) return fallback();
+        navigator.geolocation.getCurrentPosition(
+          (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+          fallback,
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
+        );
+      });
+
+    try {
+      const location = await getPosition();
+      const res = await fetch('/api/emergency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Emergency lookup failed');
+
+      setEmergency({ ...data, location });
+      setSheetExpanded(false); // map + panel need the screen
+
+      // Open the dialer with the ER number pre-filled. Browsers require
+      // the final tap to connect — that tap is the only thing left.
+      window.location.href = `tel:${data.hospital.phone}`;
+    } catch {
+      // Even if lookup fails, don't leave the user with nothing.
+      window.location.href = 'tel:119';
+    } finally {
+      setEmergencyBusy(false);
+    }
+  }, [start]);
 
   // Community walk ratings (drag-and-drop star pins).
   const [ratings, setRatings] = useState([]);
@@ -115,6 +169,8 @@ export default function Dashboard() {
       if (saved.overlay?.length) setOverlay(saved.overlay);
       if (typeof saved.selectedIndex === 'number') setSelectedIndex(saved.selectedIndex);
       if (saved.explanation) setExplanation(saved.explanation);
+      if (saved.forecast) setForecast(saved.forecast);
+      if (typeof saved.departOffset === 'number') setDepartOffset(saved.departOffset);
     } catch {
       // corrupt/old snapshot — start fresh
     }
@@ -133,13 +189,15 @@ export default function Dashboard() {
           overlay,
           selectedIndex,
           explanation,
+          forecast,
+          departOffset,
           savedAt: Date.now(),
         })
       );
     } catch {
       // storage full/unavailable — persistence is best-effort
     }
-  }, [start, destination, routes, overlay, selectedIndex, explanation]);
+  }, [start, destination, routes, overlay, selectedIndex, explanation, forecast, departOffset]);
 
   // Changing either location invalidates the current results — this is the
   // "reset": routes and the explanation clear, and the next Find Routes
@@ -222,8 +280,8 @@ export default function Dashboard() {
     setError(null);
     setExplanation(null);
 
-    // Overlay refresh rides along with the same button press; its failure
-    // never blocks the route result.
+    // Overlay + forecast ride along with the same button press; their
+    // failure never blocks the route result.
     const overlayPromise = fetch('/api/aqi', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -237,6 +295,13 @@ export default function Dashboard() {
       )
       .catch(() => null);
 
+    const forecastPromise = fetch(`/api/forecast?lat=${start.lat}&lon=${start.lon}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null);
+
+    const departAt =
+      departOffset > 0 ? new Date(Date.now() + departOffset * 3600_000).toISOString() : undefined;
+
     try {
       const res = await fetch('/api/routes', {
         method: 'POST',
@@ -244,6 +309,7 @@ export default function Dashboard() {
         body: JSON.stringify({
           start: { lat: start.lat, lon: start.lon },
           destination: { lat: destination.lat, lon: destination.lon },
+          departAt,
         }),
       });
       const data = await res.json();
@@ -260,9 +326,13 @@ export default function Dashboard() {
       setLoading(false);
     }
 
-    const overlayResults = await overlayPromise;
+    const [overlayResults, forecastResult] = await Promise.all([
+      overlayPromise,
+      forecastPromise,
+    ]);
     if (overlayResults) setOverlay(overlayResults);
-  }, [start, destination, fetchExplanation]);
+    if (forecastResult?.hours?.length) setForecast(forecastResult);
+  }, [start, destination, departOffset, fetchExplanation]);
 
   const handleSelectRoute = useCallback(
     (i) => {
@@ -290,6 +360,7 @@ export default function Dashboard() {
             overlay={overlay}
             ratings={ratings}
             ratingDraft={ratingDraft}
+            emergency={emergency}
             selectedIndex={selectedIndex}
             onSelectRoute={handleSelectRoute}
             onMapClick={handleMapClick}
@@ -299,6 +370,10 @@ export default function Dashboard() {
               mapRef.current = map;
             }}
           />
+
+          {/* Emergency: nearest ER + auto-dialer */}
+          <EmergencyButton onActivate={activateEmergency} busy={emergencyBusy} />
+          <EmergencyPanel emergency={emergency} onClose={() => setEmergency(null)} />
 
           {/* Drag the star onto the map to rate a walk there */}
           <RateWalkChip
@@ -373,6 +448,9 @@ export default function Dashboard() {
               onFindRoutes={handleFindRoutes}
               loading={loading}
               error={error}
+              departOffset={departOffset}
+              onChangeDepartOffset={setDepartOffset}
+              forecast={forecast}
               routes={routes}
               selectedIndex={selectedIndex}
               onSelectRoute={handleSelectRoute}
