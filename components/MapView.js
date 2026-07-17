@@ -155,6 +155,22 @@ function ClickHandler({ onMapClick }) {
   return null;
 }
 
+// Pans (and gently zooms in, never out) to a start/destination point the
+// moment it's set or moved — by search, pin-drop, marker-drag, or "My
+// location" — so the picked point is always easy to find on screen
+// without the user having to manually scroll/zoom to it.
+function FlyToPoint({ point }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!point) return;
+    map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 15), { duration: 0.8 });
+    // Re-run only when the actual coordinates change, not on every
+    // unrelated re-render (label edits, etc).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [point?.lat, point?.lon, map]);
+  return null;
+}
+
 // Re-fits the viewport whenever a new set of routes arrives — and also
 // when `emergencyActive` flips from true to false, so exiting emergency
 // mode brings the previous walking route back into view instead of
@@ -198,6 +214,8 @@ export default function MapView({
       />
 
       <ClickHandler onMapClick={onMapClick} />
+      <FlyToPoint point={start} />
+      <FlyToPoint point={destination} />
       <FitRoutes routes={routes} emergencyActive={!!emergency} />
       <UserLocationDot />
       <MapRefBinder onMapReady={onMapReady} />
