@@ -95,6 +95,14 @@ function MapRefBinder({ onMapReady }) {
   return null;
 }
 
+// Ratings expire after 24h, so absolute dates are pointless — show the
+// age instead ("3h ago").
+function timeAgo(iso) {
+  const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
+
 // Gold star pill for a community walk rating.
 function ratingIcon(rating) {
   return L.divIcon({
@@ -175,11 +183,7 @@ export default function MapView({
                 <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45 }}>{r.comment}</div>
               )}
               <div style={{ marginTop: 4, fontSize: 11, opacity: 0.6 }}>
-                {new Date(r.created_at).toLocaleDateString('en-GB', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })}
+                {timeAgo(r.created_at)} · pins last 24h
               </div>
             </div>
           </Popup>

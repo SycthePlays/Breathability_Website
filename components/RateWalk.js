@@ -109,7 +109,8 @@ export function RatingForm({ draft, onCancel, onSubmit, submitting }) {
           Rate this walk
         </h3>
         <p className="text-label-sm font-label-sm text-on-surface-variant mt-0 mb-4">
-          How was the air along your walk here?
+          How was the air along your walk here? Your pin stays visible to
+          everyone for 24 hours.
         </p>
 
         <div className="flex justify-center gap-1 mb-4">

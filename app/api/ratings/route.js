@@ -11,12 +11,16 @@ export const dynamic = 'force-dynamic';
 // purpose — walk_ratings has RLS allowing public select/insert (with
 // range/length checks), and updates/deletes stay closed.
 
-// GET /api/ratings — newest 300 pins.
+// GET /api/ratings — newest 300 pins from the last 24 hours. The 24h
+// window is enforced by the RLS read policy (migration 0005) and an
+// hourly pg_cron purge; this filter just restates it at the API layer.
 export async function GET() {
   try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('walk_ratings')
       .select('id, lat, lon, rating, comment, created_at')
+      .gt('created_at', cutoff)
       .order('created_at', { ascending: false })
       .limit(300);
     if (error) throw error;
