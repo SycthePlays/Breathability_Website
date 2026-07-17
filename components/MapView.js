@@ -3,7 +3,7 @@
 // Client-only map component — Leaflet touches `window`, so this is loaded
 // via next/dynamic with ssr:false from app/dashboard/page.js.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -16,7 +16,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { categorizeAqi, ROUTE_COLORS } from '../lib/aqiCategories';
+import { categorizeAqi, categorizeScore, ROUTE_COLORS } from '../lib/aqiCategories';
 
 const JAKARTA_CENTER = [-6.2088, 106.8456];
 
@@ -33,6 +33,55 @@ function pinIcon(color) {
     iconSize: [18, 18],
     iconAnchor: [9, 18],
   });
+}
+
+// Google-Maps-style blue dot: pulsing marker + translucent accuracy ring,
+// kept fresh via watchPosition. Renders nothing until the user grants
+// location permission (and quietly stays hidden if they deny it).
+const USER_DOT_ICON = L.divIcon({
+  className: '',
+  html: '<div class="user-location-dot"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+function UserLocationDot() {
+  const [pos, setPos] = useState(null); // { lat, lon, accuracy }
+
+  useEffect(() => {
+    if (!navigator.geolocation) return undefined;
+    const watchId = navigator.geolocation.watchPosition(
+      (p) =>
+        setPos({
+          lat: p.coords.latitude,
+          lon: p.coords.longitude,
+          accuracy: p.coords.accuracy,
+        }),
+      () => setPos(null), // denied/unavailable — just don't render the dot
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  if (!pos) return null;
+  return (
+    <>
+      {pos.accuracy > 30 && (
+        <Circle
+          center={[pos.lat, pos.lon]}
+          radius={pos.accuracy}
+          pathOptions={{
+            color: '#1a73e8',
+            fillColor: '#1a73e8',
+            fillOpacity: 0.08,
+            weight: 1,
+            opacity: 0.3,
+          }}
+        />
+      )}
+      <Marker position={[pos.lat, pos.lon]} icon={USER_DOT_ICON} interactive={false} zIndexOffset={500} />
+    </>
+  );
 }
 
 function ClickHandler({ onMapClick }) {
@@ -81,11 +130,12 @@ export default function MapView({
 
       <ClickHandler onMapClick={onMapClick} />
       <FitRoutes routes={routes} />
+      <UserLocationDot />
 
       {/* AQI overlay — one translucent circle per kecamatan, colored by the
           composite score (live AQI + vegetation + traffic + population) */}
       {overlay.map((p) => {
-        const cat = categorizeAqi(p.compositeScore);
+        const cat = categorizeScore(p.compositeScore);
         return (
           <Circle
             key={p.name}

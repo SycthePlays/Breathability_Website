@@ -5,13 +5,14 @@ import dynamic from 'next/dynamic';
 import styles from './dashboard.module.css';
 import TopNav from '../../components/TopNav';
 import RoutePanel from '../../components/RoutePanel';
-import { AQI_LEVELS } from '../../lib/aqiCategories';
-import { JAKARTA_AREAS, isInJakarta } from '../../lib/jakartaAreas';
+import { SCORE_LEVELS } from '../../lib/aqiCategories';
+import { REFERENCE_AREAS, isInServiceArea } from '../../lib/jakartaAreas';
 
-// Mainland kecamatan centroids for the map overlay (islands sit far
-// outside the default viewport). Scored via POST /api/aqi — but only when
-// the user presses "Find Routes", never on page load.
-const OVERLAY_AREAS = JAKARTA_AREAS.filter((a) => isInJakarta(a.lat, a.lon));
+// Mainland district centroids (Jakarta + Banten) for the map overlay —
+// the Thousand Islands sit far outside the default viewport. Scored via
+// POST /api/aqi, but only when the user presses "Find Routes", never on
+// page load.
+const OVERLAY_AREAS = REFERENCE_AREAS.filter((a) => isInServiceArea(a.lat, a.lon));
 
 // Everything worth keeping across a refresh lives under one key. Quota
 // discipline again: a reload restores routes, overlay, and explanation
@@ -53,7 +54,10 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [explanation, setExplanation] = useState(null);
   const [explainLoading, setExplainLoading] = useState(false);
-  const [sheetExpanded, setSheetExpanded] = useState(true);
+  // Mobile bottom sheet starts collapsed so the map owns the screen (the
+  // desktop sidebar ignores this entirely). It auto-expands when results
+  // arrive and collapses while the user is placing a pin on the map.
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const explainSeq = useRef(0); // guards against out-of-order explain responses
 
   // Restore the last session once on mount — no API calls involved.
@@ -251,14 +255,14 @@ export default function Dashboard() {
           {/* AQI legend — floats over the map, bottom right */}
           <div className="absolute bottom-6 right-6 glass-panel p-4 rounded-xl breathable-shadow border border-outline-variant/30 z-[500] w-44 hidden sm:block">
             <h5 className="text-label-sm font-label-sm text-on-surface mb-3 mt-0 uppercase">
-              AQI Exposure
+              Air Score
             </h5>
             <div className="space-y-2">
-              {AQI_LEVELS.map((level, i) => (
+              {SCORE_LEVELS.map((level, i) => (
                 <div key={level.label} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ background: level.color }} />
                   <span className="text-label-sm font-label-sm text-on-surface-variant">
-                    {i === 0 ? '0–50' : i === 1 ? '51–100' : '101+'} {level.label}
+                    {i === 0 ? '0–40' : i === 1 ? '41–65' : '66+'} {level.label}
                   </span>
                 </div>
               ))}
@@ -269,6 +273,9 @@ export default function Dashboard() {
         {/* Route panel — bottom sheet on mobile, left sidebar on desktop */}
         <aside
           className={`${styles.sidePanel} ${sheetExpanded ? styles.expanded : styles.collapsed}`}
+          onClick={() => {
+            if (!sheetExpanded) setSheetExpanded(true);
+          }}
         >
           <button
             type="button"
@@ -292,7 +299,14 @@ export default function Dashboard() {
               }}
               onSwap={handleSwap}
               pinMode={pinMode}
-              onTogglePin={(field) => setPinMode((cur) => (cur === field ? null : field))}
+              onTogglePin={(field) =>
+                setPinMode((cur) => {
+                  const next = cur === field ? null : field;
+                  // Drop the sheet out of the way while the user taps the map.
+                  if (next) setSheetExpanded(false);
+                  return next;
+                })
+              }
               onUseMyLocation={handleUseMyLocation}
               onFindRoutes={handleFindRoutes}
               loading={loading}

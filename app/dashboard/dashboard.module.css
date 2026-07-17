@@ -35,7 +35,7 @@
   flex-direction: column;
   max-height: 75vh;
   max-height: 75dvh;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgb(var(--c-surface) / 0.92); /* themes with light/dark */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 24px 24px 0 0;
@@ -68,7 +68,7 @@
   width: 40px;
   height: 6px;
   border-radius: 9999px;
-  background: rgba(189, 201, 198, 0.5);
+  background: rgb(var(--c-outline-variant) / 0.5);
 }
 
 .panelScroll {
@@ -87,9 +87,9 @@
     height: 100%;
     border-radius: 0;
     border-top: none;
-    border-right: 1px solid rgba(189, 201, 198, 0.25);
+    border-right: 1px solid rgb(var(--c-outline-variant) / 0.25);
     box-shadow: none;
-    background: #e3f0f8;
+    background: rgb(var(--c-surface-container));
     transform: none;
     transition: none;
   }

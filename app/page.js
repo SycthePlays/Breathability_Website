@@ -61,7 +61,7 @@ export default function Home() {
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mt-gutter">
             Personalized pathfinding for the health-conscious. We analyze atmospheric data in
-            real-time to guide you through Jakarta with clinical precision — no account needed.
+            real-time to guide you through Jakarta and Tangerang with clinical precision — no account needed.
           </p>
 
           <div className="mt-8 md:mt-section-gap flex flex-col sm:flex-row gap-gutter">

@@ -1,7 +1,7 @@
 'use client';
 
 import LocationSearchInput from './LocationSearchInput';
-import { categorizeAqi, ROUTE_COLORS } from '../lib/aqiCategories';
+import { categorizeScore, ROUTE_COLORS } from '../lib/aqiCategories';
 
 function formatDistance(meters) {
   if (meters == null) return '—';
@@ -123,7 +123,7 @@ export default function RoutePanel({
 
           {routes.map((route, i) => {
             const isSelected = i === selectedIndex;
-            const cat = categorizeAqi(route.avgAqiExposure);
+            const cat = categorizeScore(route.avgAqiExposure);
             return (
               <button
                 key={route.id ?? i}
@@ -138,7 +138,7 @@ export default function RoutePanel({
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     {i === 0 && (
-                      <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block">
+                      <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block">
                         Best Choice
                       </span>
                     )}
@@ -153,8 +153,8 @@ export default function RoutePanel({
                   <div className="text-right">
                     <div className={`font-bold text-lg ${cat.textClass}`}>
                       {route.avgAqiExposure != null
-                        ? `AQI ${Math.round(route.avgAqiExposure)}`
-                        : 'AQI —'}
+                        ? `Air ${Math.round(route.avgAqiExposure)}/100`
+                        : 'Air —'}
                     </div>
                     <div className="text-on-surface-variant text-label-sm font-label-sm">
                       {cat.label}
@@ -171,6 +171,23 @@ export default function RoutePanel({
                     {formatDistance(route.distanceMeters)}
                   </span>
                 </div>
+                {route.traits?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {route.traits.map((trait) => (
+                      <span
+                        key={trait}
+                        className="bg-secondary-container text-on-secondary-container text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      >
+                        {trait}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {route.note && (
+                  <p className="text-on-surface-variant text-label-sm font-label-sm mt-2 mb-0 leading-snug">
+                    {route.note}
+                  </p>
+                )}
               </button>
             );
           })}

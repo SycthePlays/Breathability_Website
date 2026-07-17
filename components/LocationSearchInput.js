@@ -91,7 +91,7 @@ export default function LocationSearchInput({
         onChange={handleChange}
         onFocus={() => suggestions.length && setOpen(true)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-12 py-3 bg-[#F4F9F8] border border-secondary-container/50 rounded-lg text-body-md font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+        className="w-full pl-10 pr-12 py-3 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/70 border border-secondary-container/50 rounded-lg text-body-md font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
       />
       <button
         type="button"

@@ -2,6 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Clinical Clarity theme tokens as RGB triplets. Tailwind color utilities
+ * resolve through these (see tailwind.config.js), so flipping the .dark
+ * class on <html> re-themes every component at once. Light values come
+ * from clinical_clarity/DESIGN.md; dark values are the Material-3-style
+ * complements of the same teal/sage palette.
+ */
+:root {
+  --c-primary: 0 106 99;
+  --c-on-primary: 255 255 255;
+  --c-primary-container: 77 182 172;
+  --c-on-primary-container: 0 67 63;
+  --c-primary-fixed: 142 244 233;
+  --c-primary-fixed-dim: 113 215 205;
+  --c-on-primary-fixed: 0 32 29;
+  --c-on-primary-fixed-variant: 0 80 74;
+  --c-inverse-primary: 113 215 205;
+  --c-secondary: 67 101 86;
+  --c-on-secondary: 255 255 255;
+  --c-secondary-container: 194 232 213;
+  --c-on-secondary-container: 71 106 90;
+  --c-secondary-fixed: 197 235 216;
+  --c-secondary-fixed-dim: 169 207 188;
+  --c-on-secondary-fixed: 0 33 22;
+  --c-on-secondary-fixed-variant: 43 77 63;
+  --c-tertiary: 81 97 97;
+  --c-on-tertiary: 255 255 255;
+  --c-tertiary-container: 152 169 168;
+  --c-on-tertiary-container: 46 62 62;
+  --c-tertiary-fixed: 212 230 229;
+  --c-tertiary-fixed-dim: 184 202 201;
+  --c-on-tertiary-fixed: 14 30 30;
+  --c-on-tertiary-fixed-variant: 58 74 73;
+  --c-error: 186 26 26;
+  --c-on-error: 255 255 255;
+  --c-error-container: 255 218 214;
+  --c-on-error-container: 147 0 10;
+  --c-surface: 244 250 255;
+  --c-surface-dim: 207 220 228;
+  --c-surface-bright: 244 250 255;
+  --c-surface-container-lowest: 255 255 255;
+  --c-surface-container-low: 233 246 253;
+  --c-surface-container: 227 240 248;
+  --c-surface-container-high: 221 234 242;
+  --c-surface-container-highest: 215 228 236;
+  --c-surface-variant: 215 228 236;
+  --c-surface-tint: 0 106 99;
+  --c-on-surface: 17 29 35;
+  --c-on-surface-variant: 61 73 71;
+  --c-inverse-surface: 38 50 56;
+  --c-inverse-on-surface: 230 243 251;
+  --c-outline: 109 122 119;
+  --c-outline-variant: 189 201 198;
+  --c-background: 244 250 255;
+  --c-on-background: 17 29 35;
+}
+
+.dark {
+  --c-primary: 113 215 205;
+  --c-on-primary: 0 55 51;
+  --c-primary-container: 0 80 74;
+  --c-on-primary-container: 142 244 233;
+  --c-inverse-primary: 0 106 99;
+  --c-secondary: 169 207 188;
+  --c-on-secondary: 20 54 39;
+  --c-secondary-container: 43 77 63;
+  --c-on-secondary-container: 197 235 216;
+  --c-tertiary: 184 202 201;
+  --c-on-tertiary: 35 51 51;
+  --c-tertiary-container: 58 74 73;
+  --c-on-tertiary-container: 212 230 229;
+  --c-error: 255 180 171;
+  --c-on-error: 105 0 5;
+  --c-error-container: 147 0 10;
+  --c-on-error-container: 255 218 214;
+  --c-surface: 14 21 20;
+  --c-surface-dim: 14 21 20;
+  --c-surface-bright: 52 59 58;
+  --c-surface-container-lowest: 9 15 14;
+  --c-surface-container-low: 23 29 28;
+  --c-surface-container: 27 34 33;
+  --c-surface-container-high: 37 43 42;
+  --c-surface-container-highest: 48 54 54;
+  --c-surface-variant: 63 73 71;
+  --c-surface-tint: 113 215 205;
+  --c-on-surface: 221 228 225;
+  --c-on-surface-variant: 190 201 198;
+  --c-inverse-surface: 221 228 225;
+  --c-inverse-on-surface: 38 50 56;
+  --c-outline: 136 147 144;
+  --c-outline-variant: 63 73 71;
+  --c-background: 14 21 20;
+  --c-on-background: 221 228 225;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -17,8 +112,8 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #111d23;
-  background: #f4faff;
+  color: rgb(var(--c-on-background));
+  background: rgb(var(--c-background));
   overflow-x: hidden; /* guards against accidental horizontal scroll on small screens */
 }
 
@@ -39,8 +134,16 @@ a {
   -webkit-backdrop-filter: blur(12px);
 }
 
+.dark .glass-panel {
+  background: rgba(23, 29, 28, 0.8);
+}
+
 .breathable-shadow {
   box-shadow: 0 8px 20px rgba(38, 50, 56, 0.04);
+}
+
+.dark .breathable-shadow {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .mesh-gradient-bg {
@@ -50,6 +153,13 @@ a {
     radial-gradient(at 50% 100%, #ffffff 0%, transparent 50%);
 }
 
+.dark .mesh-gradient-bg {
+  background:
+    radial-gradient(at 0% 0%, #12211f 0%, transparent 50%),
+    radial-gradient(at 100% 0%, #101917 0%, transparent 50%),
+    radial-gradient(at 50% 100%, #090f0e 0%, transparent 50%);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -57,7 +167,7 @@ a {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #bdc9c6;
+  background: rgb(var(--c-outline-variant));
   border-radius: 10px;
 }
 
@@ -68,4 +178,51 @@ a {
   width: 100%;
   z-index: 0;
   background: #eef2f3;
+}
+
+/* Dark map: invert + hue-rotate the raster tiles (the standard trick for
+   OSM tiles without a paid dark tile provider). Route colors and markers
+   are overlays, so they keep their real colors. */
+.dark .leaflet-container {
+  background: #0e1514;
+}
+.dark .leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(3.2) hue-rotate(190deg) saturate(0.35) brightness(0.75);
+}
+.dark .leaflet-control-attribution {
+  background: rgba(23, 29, 28, 0.8);
+  color: #bec9c6;
+}
+
+/* Google-Maps-style current-location marker */
+.user-location-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #1a73e8;
+  border: 3px solid #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.user-location-dot::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: rgba(26, 115, 232, 0.3);
+  animation: user-location-pulse 2.2s ease-out infinite;
+}
+@keyframes user-location-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
