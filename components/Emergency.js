@@ -41,7 +41,14 @@ export function EmergencyButton({ onActivate, busy }) {
   );
 }
 
-export function EmergencyPanel({ emergency, onClose }) {
+// Emergency mode, rendered IN PLACE OF the route panel (sidebar on
+// desktop, bottom sheet on mobile) — never as an overlay on top of the
+// map. This keeps the map (with the red route + hospital pin) fully
+// visible on both layouts, and pressing Exit just unmounts this in favor
+// of RoutePanel again: `start`/`destination`/`routes` were never touched,
+// so the walk the user was already planning reappears exactly as it was
+// — no re-fetch, no extra API calls, no reset to the beginning.
+export function EmergencySidebar({ emergency, onClose }) {
   if (!emergency) return null;
   const { hospital, alternatives = [], route, location, emergencyNumbers = [] } = emergency;
   const etaMin = route ? Math.round(route.durationSeconds / 60) : null;
@@ -50,88 +57,97 @@ export function EmergencyPanel({ emergency, onClose }) {
     : hospital.distKm.toFixed(1);
 
   return (
-    <div className="absolute inset-x-0 top-0 z-[700] p-3 sm:p-4 pointer-events-none">
-      <div className="pointer-events-auto max-w-md mx-auto bg-surface-container-lowest rounded-xl border-2 border-error breathable-shadow overflow-hidden">
-        <div className="bg-error text-on-error px-4 py-2.5 flex items-center justify-between">
-          <span className="font-label-md text-label-md font-bold flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">emergency</span>
-            EMERGENCY MODE
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-on-error/90 hover:text-on-error text-label-sm font-label-sm underline"
+    <div className="flex flex-col gap-base h-full">
+      <div className="bg-error text-on-error rounded-xl px-4 py-3 flex items-center justify-between breathable-shadow">
+        <span className="font-label-md text-label-md font-bold flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">emergency</span>
+          EMERGENCY MODE
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cancel — return to your route"
+          className="text-on-error/90 hover:text-on-error text-label-sm font-label-sm underline"
+        >
+          Exit
+        </button>
+      </div>
+
+      <div className="bg-surface-container-lowest rounded-xl border-2 border-error p-card-padding breathable-shadow">
+        <p className="m-0 mb-1 text-label-sm font-label-sm text-error font-bold">
+          If symptoms are severe, call 119 now.
+        </p>
+        <h3 className="m-0 font-headline-md text-headline-md text-on-surface">{hospital.name}</h3>
+        <p className="m-0 mt-0.5 text-label-sm font-label-sm text-on-surface-variant">
+          {hospital.area} · {distKm} km away
+          {etaMin != null && ` · ~${etaMin} min on foot — take a vehicle if you can`}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <a
+            href={`tel:${hospital.phone}`}
+            className="col-span-2 bg-error text-on-error rounded-lg py-3 text-center font-label-md text-label-md font-bold no-underline flex items-center justify-center gap-2"
           >
-            Exit
-          </button>
-        </div>
-
-        <div className="p-4">
-          <p className="m-0 mb-1 text-label-sm font-label-sm text-error font-bold">
-            If symptoms are severe, call 119 now.
-          </p>
-          <h3 className="m-0 font-headline-md text-lg text-on-surface">{hospital.name}</h3>
-          <p className="m-0 mt-0.5 text-label-sm font-label-sm text-on-surface-variant">
-            {hospital.area} · {distKm} km away
-            {etaMin != null && ` · ~${etaMin} min on foot — take a vehicle if you can`}
-          </p>
-
-          <div className="grid grid-cols-2 gap-2 mt-3">
+            <span className="material-symbols-outlined text-[18px]">call</span>
+            Call {hospital.name.split(' ').slice(0, 2).join(' ')} ER
+          </a>
+          {emergencyNumbers.map((n) => (
             <a
-              href={`tel:${hospital.phone}`}
-              className="col-span-2 bg-error text-on-error rounded-lg py-3 text-center font-label-md text-label-md font-bold no-underline flex items-center justify-center gap-2"
+              key={n.phone}
+              href={`tel:${n.phone}`}
+              className="bg-surface-container-high text-on-surface rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
             >
-              <span className="material-symbols-outlined text-[18px]">call</span>
-              Call {hospital.name.split(' ').slice(0, 2).join(' ')} ER
+              {n.name} · {n.phone}
             </a>
-            {emergencyNumbers.map((n) => (
-              <a
-                key={n.phone}
-                href={`tel:${n.phone}`}
-                className="bg-surface-container-high text-on-surface rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
-              >
-                {n.name} · {n.phone}
-              </a>
-            ))}
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(shareText(location, hospital))}`}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-secondary-container text-on-secondary-container rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
-            >
-              Share location (WA)
-            </a>
-            <a
-              href={`sms:?&body=${encodeURIComponent(shareText(location, hospital))}`}
-              className="bg-secondary-container text-on-secondary-container rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
-            >
-              Share location (SMS)
-            </a>
-          </div>
-
-          {alternatives.length > 0 && (
-            <div className="mt-3 pt-2 border-t border-outline-variant/30">
-              <p className="m-0 mb-1.5 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
-                Other nearby ERs
-              </p>
-              {alternatives.map((h) => (
-                <div key={h.name} className="flex items-center justify-between py-1">
-                  <span className="text-label-sm font-label-sm text-on-surface truncate pr-2">
-                    {h.name} · {h.distKm.toFixed(1)} km
-                  </span>
-                  <a
-                    href={`tel:${h.phone}`}
-                    className="text-error font-bold text-label-sm font-label-sm no-underline flex items-center gap-1 flex-shrink-0"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">call</span>
-                    Call
-                  </a>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(shareText(location, hospital))}`}
+            target="_blank"
+            rel="noreferrer"
+            className="bg-secondary-container text-on-secondary-container rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
+          >
+            Share location (WA)
+          </a>
+          <a
+            href={`sms:?&body=${encodeURIComponent(shareText(location, hospital))}`}
+            className="bg-secondary-container text-on-secondary-container rounded-lg py-2.5 text-center font-label-sm text-label-sm font-bold no-underline"
+          >
+            Share location (SMS)
+          </a>
         </div>
       </div>
+
+      {alternatives.length > 0 && (
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/20 p-card-padding breathable-shadow">
+          <p className="m-0 mb-2 text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+            Other nearby ERs
+          </p>
+          <div className="space-y-2">
+            {alternatives.map((h) => (
+              <div key={h.name} className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-body-md font-body-md text-on-surface truncate">{h.name}</div>
+                  <div className="text-label-sm font-label-sm text-on-surface-variant">
+                    {h.distKm.toFixed(1)} km · {h.area}
+                  </div>
+                </div>
+                <a
+                  href={`tel:${h.phone}`}
+                  className="bg-surface-container-high text-error font-bold text-label-sm font-label-sm no-underline flex items-center gap-1 flex-shrink-0 px-3 py-1.5 rounded-lg"
+                >
+                  <span className="material-symbols-outlined text-[14px]">call</span>
+                  Call
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-label-sm font-label-sm text-on-surface-variant px-1 m-0">
+        Not in danger? Press <strong>Exit</strong> above to return to your walk — nothing about
+        your route was changed.
+      </p>
     </div>
   );
 }

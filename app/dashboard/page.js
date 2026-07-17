@@ -6,7 +6,7 @@ import styles from './dashboard.module.css';
 import TopNav from '../../components/TopNav';
 import RoutePanel from '../../components/RoutePanel';
 import { RateWalkChip, RatingForm } from '../../components/RateWalk';
-import { EmergencyButton, EmergencyPanel } from '../../components/Emergency';
+import { EmergencyButton, EmergencySidebar } from '../../components/Emergency';
 import { SCORE_LEVELS } from '../../lib/aqiCategories';
 import { REFERENCE_AREAS, isInServiceArea } from '../../lib/jakartaAreas';
 
@@ -49,6 +49,10 @@ export default function Dashboard() {
   const [start, setStart] = useState(null); // {lat, lon, label}
   const [destination, setDestination] = useState(null);
   const [pinMode, setPinMode] = useState(null); // 'start' | 'dest' | null
+  // Which field "My location" (and a dropped pin) should target — whichever
+  // input the user last focused or armed. Defaults to 'start' so the
+  // original one-tap-to-begin flow is unchanged until the user interacts.
+  const [focusedField, setFocusedField] = useState('start');
   const [routes, setRoutes] = useState([]);
   const [overlay, setOverlay] = useState([]);
   const [departOffset, setDepartOffset] = useState(0); // hours from now; 0 = leave now
@@ -102,7 +106,9 @@ export default function Dashboard() {
       if (!res.ok) throw new Error(data.error || 'Emergency lookup failed');
 
       setEmergency({ ...data, location });
-      setSheetExpanded(false); // map + panel need the screen
+      // Emergency now lives IN the sidebar/sheet (not an overlay on the
+      // map), so it needs to be visible, not hidden.
+      setSheetExpanded(true);
 
       // Open the dialer with the ER number pre-filled. Browsers require
       // the final tap to connect — that tap is the only thing left.
@@ -238,15 +244,19 @@ export default function Dashboard() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         clearResults();
-        setStart({
+        const point = {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           label: 'My location',
-        });
+        };
+        // Targets whichever field was last focused/armed (start or
+        // destination) instead of always overwriting the start point.
+        if (focusedField === 'dest') setDestination(point);
+        else setStart(point);
       },
       () => setError('Could not read your location — check browser permissions.')
     );
-  }, [clearResults]);
+  }, [clearResults, focusedField]);
 
   const fetchExplanation = useCallback(async (allRoutes, chosenIndex) => {
     const seq = ++explainSeq.current;
@@ -371,9 +381,10 @@ export default function Dashboard() {
             }}
           />
 
-          {/* Emergency: nearest ER + auto-dialer */}
+          {/* Emergency: SOS lives on the map; its content replaces the
+              route panel below (see the <aside>) so the map + red route
+              + hospital pin are never blocked by an overlay. */}
           <EmergencyButton onActivate={activateEmergency} busy={emergencyBusy} />
-          <EmergencyPanel emergency={emergency} onClose={() => setEmergency(null)} />
 
           {/* Drag the star onto the map to rate a walk there */}
           <RateWalkChip
@@ -423,40 +434,46 @@ export default function Dashboard() {
             <div className={styles.dragHandleBar} />
           </button>
           <div className={`${styles.panelScroll} custom-scrollbar`}>
-            <RoutePanel
-              start={start}
-              destination={destination}
-              onSelectStart={(p) => {
-                clearResults();
-                setStart(p);
-              }}
-              onSelectDestination={(p) => {
-                clearResults();
-                setDestination(p);
-              }}
-              onSwap={handleSwap}
-              pinMode={pinMode}
-              onTogglePin={(field) =>
-                setPinMode((cur) => {
-                  const next = cur === field ? null : field;
-                  // Drop the sheet out of the way while the user taps the map.
-                  if (next) setSheetExpanded(false);
-                  return next;
-                })
-              }
-              onUseMyLocation={handleUseMyLocation}
-              onFindRoutes={handleFindRoutes}
-              loading={loading}
-              error={error}
-              departOffset={departOffset}
-              onChangeDepartOffset={setDepartOffset}
-              forecast={forecast}
-              routes={routes}
-              selectedIndex={selectedIndex}
-              onSelectRoute={handleSelectRoute}
-              explanation={explanation}
-              explainLoading={explainLoading}
-            />
+            {emergency ? (
+              <EmergencySidebar emergency={emergency} onClose={() => setEmergency(null)} />
+            ) : (
+              <RoutePanel
+                start={start}
+                destination={destination}
+                onSelectStart={(p) => {
+                  clearResults();
+                  setStart(p);
+                }}
+                onSelectDestination={(p) => {
+                  clearResults();
+                  setDestination(p);
+                }}
+                onSwap={handleSwap}
+                pinMode={pinMode}
+                onTogglePin={(field) =>
+                  setPinMode((cur) => {
+                    const next = cur === field ? null : field;
+                    // Drop the sheet out of the way while the user taps the map.
+                    if (next) setSheetExpanded(false);
+                    return next;
+                  })
+                }
+                focusedField={focusedField}
+                onFocusField={setFocusedField}
+                onUseMyLocation={handleUseMyLocation}
+                onFindRoutes={handleFindRoutes}
+                loading={loading}
+                error={error}
+                departOffset={departOffset}
+                onChangeDepartOffset={setDepartOffset}
+                forecast={forecast}
+                routes={routes}
+                selectedIndex={selectedIndex}
+                onSelectRoute={handleSelectRoute}
+                explanation={explanation}
+                explainLoading={explainLoading}
+              />
+            )}
           </div>
         </aside>
       </main>

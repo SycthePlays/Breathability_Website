@@ -92,6 +92,8 @@ export default function RoutePanel({
   onSwap,
   pinMode,
   onTogglePin,
+  focusedField = 'start',
+  onFocusField,
   onUseMyLocation,
   onFindRoutes,
   loading,
@@ -117,7 +119,7 @@ export default function RoutePanel({
           <button
             type="button"
             onClick={onUseMyLocation}
-            title="Use my current location as start"
+            title={`Use my current location as ${focusedField === 'dest' ? 'destination' : 'start'}`}
             className="flex items-center gap-1 text-label-sm font-label-sm text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
           >
             <span className="material-symbols-outlined text-[16px]">my_location</span>
@@ -133,7 +135,11 @@ export default function RoutePanel({
             value={start?.label}
             onSelect={onSelectStart}
             pinArmed={pinMode === 'start'}
-            onTogglePin={() => onTogglePin('start')}
+            onTogglePin={() => {
+              onFocusField?.('start');
+              onTogglePin('start');
+            }}
+            onFocus={() => onFocusField?.('start')}
           />
 
           <div className="flex justify-center -my-4 relative z-10">
@@ -156,7 +162,11 @@ export default function RoutePanel({
             value={destination?.label}
             onSelect={onSelectDestination}
             pinArmed={pinMode === 'dest'}
-            onTogglePin={() => onTogglePin('dest')}
+            onTogglePin={() => {
+              onFocusField?.('dest');
+              onTogglePin('dest');
+            }}
+            onFocus={() => onFocusField?.('dest')}
           />
         </div>
 

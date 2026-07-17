@@ -155,8 +155,11 @@ function ClickHandler({ onMapClick }) {
   return null;
 }
 
-// Re-fits the viewport whenever a new set of routes arrives.
-function FitRoutes({ routes }) {
+// Re-fits the viewport whenever a new set of routes arrives — and also
+// when `emergencyActive` flips from true to false, so exiting emergency
+// mode brings the previous walking route back into view instead of
+// leaving the map zoomed in on the hospital.
+function FitRoutes({ routes, emergencyActive }) {
   const map = useMap();
   useEffect(() => {
     if (!routes?.length) return;
@@ -166,7 +169,7 @@ function FitRoutes({ routes }) {
     if (allCoords.length) {
       map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
     }
-  }, [routes, map]);
+  }, [routes, emergencyActive, map]);
   return null;
 }
 
@@ -195,7 +198,7 @@ export default function MapView({
       />
 
       <ClickHandler onMapClick={onMapClick} />
-      <FitRoutes routes={routes} />
+      <FitRoutes routes={routes} emergencyActive={!!emergency} />
       <UserLocationDot />
       <MapRefBinder onMapReady={onMapReady} />
 

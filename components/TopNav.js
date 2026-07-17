@@ -13,12 +13,12 @@ export default function TopNav({ active = 'home' }) {
   return (
     <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center gap-2 px-3 sm:px-container-margin h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
       <div className="flex items-center gap-1.5 sm:gap-base min-w-0">
-        <span
-          className="material-symbols-outlined text-primary text-[24px] sm:text-[28px] flex-shrink-0"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          air
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.jpg"
+          alt="Breathability"
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-md object-cover flex-shrink-0"
+        />
         <Link
           href="/"
           className="font-display text-lg sm:text-headline-md font-bold text-primary no-underline truncate"
